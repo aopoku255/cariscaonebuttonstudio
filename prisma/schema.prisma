@@ -1,0 +1,679 @@
+// One Button Studio (a production space by CARISCA) booking platform schema.
+//
+// Conventions used throughout:
+//  * All money is stored as an integer number of *minor units* (pesewas, 1 GHS = 100).
+//    This keeps arithmetic exact and matches the unit Paystack expects on the wire.
+//  * All wall-clock times inside a day are stored as `Int` minutes from midnight in
+//    studio-local time (see src/lib/booking/time.ts). Calendar days are `@db.Date`.
+//  * `startsAt` / `endsAt` are the same instants expressed as UTC timestamps, kept for
+//    sorting, calendar exports and reminder queries.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AdminRole {
+  SUPER_ADMIN
+  STUDIO_MANAGER
+  FINANCE
+  STAFF
+}
+
+enum CustomerType {
+  /// A verified KNUST student, distinct from the generic STUDENT self-declaration:
+  /// this category unlocks the dedicated Student Studio packages and pricing.
+  KNUST_STUDENT
+  STUDENT
+  RESEARCHER
+  CREATOR
+  STARTUP
+  BUSINESS
+  NGO
+  CORPORATE
+  OTHER
+}
+
+enum PackageCategory {
+  STUDIO_RENTAL
+  MEMBERSHIP
+  PRODUCTION
+  CORPORATE
+  /// Session packages built specifically for the Student Studio (see Package.studentOnly).
+  STUDENT
+  OTHER
+}
+
+/// How a KNUST student proves their status. Configurable studio-wide in Admin ->
+/// Settings, and recorded per customer once they verify.
+enum StudentVerificationMethod {
+  EMAIL
+  STUDENT_ID
+  EITHER
+}
+
+enum AddOnPricingUnit {
+  PER_HOUR
+  PER_BOOKING
+  FIXED
+  CUSTOM
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PENDING_APPROVAL
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  MANUAL
+  COMPLIMENTARY
+  MEMBERSHIP
+}
+
+enum BookingSource {
+  PUBLIC
+  ADMIN
+}
+
+enum MembershipStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum BlockType {
+  HOLIDAY
+  MAINTENANCE
+  INTERNAL_EVENT
+  PRIVATE_EVENT
+  OTHER
+}
+
+enum InquiryStatus {
+  NEW
+  IN_REVIEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+enum NotificationType {
+  BOOKING_CREATED
+  PAYMENT_SUCCESSFUL
+  BOOKING_CANCELLED
+  BOOKING_REMINDER
+  BOOKING_COMPLETED
+  CORPORATE_INQUIRY
+  MEMBERSHIP_ACTIVATED
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole @default(STAFF)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions       AdminSession[]
+  auditLogs      AuditLog[]
+  createdBookings Booking[]     @relation("BookingCreatedByAdmin")
+
+  @@index([role])
+}
+
+model AdminSession {
+  id          String   @id @default(cuid())
+  /// SHA-256 of the opaque session token. The raw token only ever lives in the cookie.
+  tokenHash   String   @unique
+  adminUserId String
+  expiresAt   DateTime
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
+/// A studio customer. Created automatically for guest bookings; `passwordHash` is only
+/// set if the customer later chooses to claim the account.
+model Customer {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String
+  phone         String
+  organisation  String?
+  userType      CustomerType @default(OTHER)
+  passwordHash  String?
+  emailVerified Boolean      @default(false)
+  /// Admin-verified student/researcher status, used by discount rules that require it
+  /// and by KNUST_STUDENT customers to unlock Student Studio pricing.
+  isVerified    Boolean      @default(false)
+  /// KNUST email used to verify a student, when the email method is used. May differ
+  /// from the customer's own contact email.
+  knustEmail                 String?
+  /// Student ID reference collected when the student-ID verification method is used.
+  studentIdRef                String?
+  /// How this customer was verified as a KNUST student, once verified.
+  studentVerificationMethod   StudentVerificationMethod?
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  bookings    Booking[]
+  memberships Membership[]
+  sessions    CustomerSession[]
+
+  @@index([userType])
+  @@index([createdAt])
+}
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  customerId String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue
+// ---------------------------------------------------------------------------
+
+model Package {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  category    PackageCategory @default(STUDIO_RENTAL)
+  summary     String?         @db.Text
+  description String?         @db.Text
+  /// Price in pesewas.
+  priceMinor  Int
+  /// Billable studio time for a single booking of this package.
+  durationMinutes Int         @default(60)
+  imageUrl    String?
+  isActive    Boolean         @default(true)
+  isPopular   Boolean         @default(false)
+  /// Restricted to verified KNUST students (CustomerType.KNUST_STUDENT with
+  /// isVerified = true). Applies to session packages (category STUDENT) and to the
+  /// two student memberships (category MEMBERSHIP), which stay full membership
+  /// products, just scoped to students by this flag rather than by a discount.
+  studentOnly Boolean         @default(false)
+  sortOrder   Int             @default(0)
+
+  // Membership-only fields (null/zero for ordinary packages).
+  includedHours            Int?
+  /// Discount applied to additional studio hours booked by an active member.
+  extraHourDiscountPercent Int?
+  /// How long the prepaid hours remain usable, in days.
+  validityDays             Int?
+  priorityBooking          Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  features      PackageFeature[]
+  bookings      Booking[]
+  memberships   Membership[]
+  discountRules DiscountRulePackage[]
+
+  @@index([category, isActive])
+  @@index([sortOrder])
+}
+
+model PackageFeature {
+  id        String @id @default(cuid())
+  packageId String
+  label     String
+  sortOrder Int    @default(0)
+
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId])
+}
+
+model AddOn {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String?          @db.Text
+  /// Price in pesewas. Ignored when `pricingUnit` is CUSTOM (quote on request).
+  priceMinor  Int              @default(0)
+  pricingUnit AddOnPricingUnit @default(PER_BOOKING)
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  maxQuantity Int              @default(1)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  bookingAddOns BookingAddOn[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Equipment {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  name               String
+  description        String?  @db.Text
+  imageUrl           String?
+  quantity           Int      @default(1)
+  isAvailable        Boolean  @default(true)
+  /// Whether this item is bundled into studio packages at no extra cost.
+  includedInPackages Boolean  @default(false)
+  /// Extra rental price in pesewas when not included.
+  rentalPriceMinor   Int      @default(0)
+  sortOrder          Int      @default(0)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String   @db.Text
+  answer    String   @db.Text
+  category  String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+/// A photo for the public "Inside One Button Studio" gallery. `imageUrl` is
+/// nullable on purpose: until real photography exists, the public site renders
+/// a labelled placeholder in its place using the same caption.
+model GalleryImage {
+  id        String   @id @default(cuid())
+  caption   String
+  category  String?
+  imageUrl  String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+/// Configurable pricing category, e.g. "Students & Researchers: 10% off".
+model DiscountRule {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?  @db.Text
+  percentOff          Int
+  /// Comma-separated `CustomerType` values this rule applies to.
+  eligibleUserTypes   String
+  requiresVerification Boolean @default(false)
+  startsAt            DateTime?
+  endsAt              DateTime?
+  isActive            Boolean  @default(true)
+  /// When false, only the packages joined through `packages` are eligible.
+  appliesToAllPackages Boolean @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  packages DiscountRulePackage[]
+
+  @@index([isActive])
+}
+
+model DiscountRulePackage {
+  discountRuleId String
+  packageId      String
+
+  discountRule DiscountRule @relation(fields: [discountRuleId], references: [id], onDelete: Cascade)
+  package      Package      @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@id([discountRuleId, packageId])
+  @@index([packageId])
+}
+
+// ---------------------------------------------------------------------------
+// Bookings
+// ---------------------------------------------------------------------------
+
+model Booking {
+  id         String        @id @default(cuid())
+  reference  String        @unique
+  customerId String
+  packageId  String?
+
+  status        BookingStatus @default(PENDING_PAYMENT)
+  paymentStatus PaymentStatus @default(PENDING)
+  source        BookingSource @default(PUBLIC)
+
+  /// Studio-local calendar day of the session.
+  bookingDate     DateTime @db.Date
+  /// Minutes from midnight, studio-local.
+  startMinute     Int
+  endMinute       Int
+  /// Same instants in UTC, for sorting / reminders / calendar export.
+  startsAt        DateTime
+  endsAt          DateTime
+  durationMinutes Int
+
+  // Money, all in pesewas. Never derived from client input.
+  subtotalMinor Int
+  discountMinor Int    @default(0)
+  taxMinor      Int    @default(0)
+  totalMinor    Int
+  currency      String @default("GHS")
+  discountLabel String?
+
+  // Membership redemption
+  membershipId        String?
+  membershipMinutesUsed Int   @default(0)
+
+  packageNameSnapshot String?
+  purpose             String? @db.Text
+  specialRequirements String? @db.Text
+  internalNotes       String? @db.Text
+
+  /// PENDING_PAYMENT bookings past this instant are released by the expiry sweeper.
+  expiresAt          DateTime?
+  confirmedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?   @db.Text
+  completedAt        DateTime?
+  reminderSentAt     DateTime?
+
+  createdByAdminId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  package         Package?          @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  membership      Membership?       @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  createdByAdmin  AdminUser?        @relation("BookingCreatedByAdmin", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  addOns          BookingAddOn[]
+  payments        Payment[]
+  slots           BookingSlot[]
+  membershipUsage MembershipUsage[]
+  notifications   Notification[]
+
+  @@index([bookingDate, status])
+  @@index([customerId])
+  @@index([packageId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([startsAt])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model BookingAddOn {
+  id        String @id @default(cuid())
+  bookingId String
+  addOnId   String?
+
+  /// Snapshots so historical bookings survive catalogue edits.
+  nameSnapshot        String
+  pricingUnitSnapshot AddOnPricingUnit
+  unitPriceMinor      Int
+  quantity            Int              @default(1)
+  lineTotalMinor      Int
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addOn   AddOn?  @relation(fields: [addOnId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([addOnId])
+}
+
+/// One row per 30-minute grid cell a booking occupies. The unique constraint is the
+/// database-level guarantee that two live bookings can never overlap, even under a race.
+/// Rows are deleted when a booking is cancelled, refunded or expires.
+model BookingSlot {
+  id          String   @id @default(cuid())
+  bookingDate DateTime @db.Date
+  slotMinute  Int
+  bookingId   String
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingDate, slotMinute])
+  @@index([bookingId])
+}
+
+model Payment {
+  id        String @id @default(cuid())
+  /// Our own reference, sent to Paystack and echoed back.
+  reference String @unique
+  bookingId String?
+
+  provider    PaymentProvider @default(PAYSTACK)
+  amountMinor Int
+  currency    String          @default("GHS")
+  status      PaymentStatus   @default(PENDING)
+
+  /// Paystack's own transaction reference/id once known.
+  providerReference String? @unique
+  authorizationUrl  String? @db.Text
+  accessCode        String?
+  channel           String?
+  paidAt            DateTime?
+  failureReason     String?   @db.Text
+  /// Raw verification payload, kept for reconciliation.
+  rawResponse       Json?
+
+  membershipId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking    Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Memberships (prepaid monthly hour bundles)
+// ---------------------------------------------------------------------------
+
+model Membership {
+  id         String           @id @default(cuid())
+  reference  String           @unique
+  customerId String
+  packageId  String?
+  status     MembershipStatus @default(PENDING_PAYMENT)
+
+  /// Prepaid allowance and consumption, in minutes.
+  totalMinutes Int
+  usedMinutes  Int @default(0)
+
+  startDate DateTime
+  expiryDate DateTime
+
+  /// Memberships never renew on their own; an admin must opt a membership in.
+  autoRenew                Boolean @default(false)
+  priorityBooking          Boolean @default(false)
+  extraHourDiscountPercent Int     @default(0)
+
+  /// What the member actually paid for this cycle, in pesewas.
+  pricePaidMinor Int @default(0)
+
+  packageNameSnapshot String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  customer Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  package  Package?          @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+  usage    MembershipUsage[]
+  payments Payment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([expiryDate])
+}
+
+model MembershipUsage {
+  id           String   @id @default(cuid())
+  membershipId String
+  bookingId    String?
+  minutesUsed  Int
+  note         String?
+  createdAt    DateTime @default(now())
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  booking    Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([membershipId])
+  @@index([bookingId])
+}
+
+// ---------------------------------------------------------------------------
+// Availability
+// ---------------------------------------------------------------------------
+
+model OperatingHour {
+  id          String  @id @default(cuid())
+  /// 0 = Sunday … 6 = Saturday.
+  dayOfWeek   Int     @unique
+  isOpen      Boolean @default(true)
+  openMinute  Int     @default(480)
+  closeMinute Int     @default(1080)
+}
+
+model BlockedDate {
+  id        String    @id @default(cuid())
+  date      DateTime  @unique @db.Date
+  reason    String
+  type      BlockType @default(OTHER)
+  createdAt DateTime  @default(now())
+}
+
+model BlockedTime {
+  id          String    @id @default(cuid())
+  date        DateTime  @db.Date
+  startMinute Int
+  endMinute   Int
+  reason      String
+  type        BlockType @default(OTHER)
+  createdAt   DateTime  @default(now())
+
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Operations
+// ---------------------------------------------------------------------------
+
+model CorporateInquiry {
+  id                String        @id @default(cuid())
+  organisation      String
+  contactName       String
+  email             String
+  phone             String
+  sessionsRequired  Int?
+  estimatedHours    Int?
+  contentType       String?
+  preferredStartDate DateTime?    @db.Date
+  requirements      String?       @db.Text
+  status            InquiryStatus @default(NEW)
+  adminNotes        String?       @db.Text
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  type      NotificationType
+  channel   String             @default("EMAIL")
+  recipient String
+  subject   String             @db.Text
+  body      String             @db.Text
+  status    NotificationStatus @default(QUEUED)
+  attempts  Int                @default(0)
+  error     String?            @db.Text
+  sentAt    DateTime?
+  bookingId String?
+  createdAt DateTime           @default(now())
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([bookingId])
+  @@index([createdAt])
+}
+
+/// Key/value store for everything on the admin Settings screens.
+model StudioSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String?
+  actorEmail  String?
+  action      String
+  entity      String
+  entityId    String?
+  summary     String   @db.Text
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

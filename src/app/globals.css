@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   One Button Studio design tokens
+
+   One Button Studio is CARISCA's content production space, so the palette is
+   built on CARISCA's own institutional blue rather than a generic studio
+   scheme. The two anchor values below (--carisca-blue and --carisca-blue-dark)
+   are the exact hex codes CARISCA uses as its own ".c-primary" / hover colour
+   on carisca.knust.edu.gh, not an invented approximation. Everything else is
+   a ramp built outward from those two real values, plus CARISCA's own light
+   "secondary" blue for the sparing accent.
+
+   Cool, mostly-monochrome and blue: primary blue, deep navy, white, and a
+   light blue-gray neutral scale. The accent stays inside the same blue family
+   rather than introducing an unrelated hue, on purpose, so the site reads as
+   one institution rather than a multicolour agency site.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  /* Neutrals, cool and institutional rather than warm */
+  --color-paper: #f6f8fb;
+  --color-paper-deep: #eef2f8;
+  --color-surface: #ffffff;
+  --color-ink: #0f172a;
+  --color-ink-soft: #33415a;
+  --color-muted: #64748b;
+  --color-line: #e1e7f0;
+  --color-line-strong: #cbd5e3;
+
+  /* Brand: CARISCA blue. 700 and 900 are CARISCA's own colour values. */
+  --color-brand-50: #eef3fb;
+  --color-brand-100: #dde8f7;
+  --color-brand-200: #bcd0ef;
+  --color-brand-300: #8fb0e2;
+  --color-brand-400: #5c88cf;
+  --color-brand-500: #3768b8;
+  --color-brand-600: #1f4fa0;
+  --color-brand-700: #0f3b8f; /* CARISCA primary blue (carisca.knust.edu.gh) */
+  --color-brand-800: #0c3277;
+  --color-brand-900: #0a2961; /* CARISCA dark/hover blue (carisca.knust.edu.gh) */
+  --color-brand-950: #071a3f;
+
+  /* Accent: CARISCA's own lighter secondary blue, used sparingly. */
+  --color-accent-50: #eefbfe;
+  --color-accent-100: #d6f4fc;
+  --color-accent-200: #aeeafa;
+  --color-accent-300: #6ddbf6;
+  --color-accent-400: #34cbf7; /* CARISCA secondary blue */
+  --color-accent-500: #0abaf0; /* CARISCA secondary blue, hover */
+  --color-accent-600: #0894c4;
+  --color-accent-700: #077aa3;
+  --color-accent-800: #0a5f82;
+  --color-accent-900: #0d4d68;
+
+  /* Status colours stay distinct from brand/accent so they never read as a series. */
+  --color-success-50: #eef7f0;
+  --color-success-100: #d6ecdc;
+  --color-success-500: #2f855a;
+  --color-success-700: #22603f;
+  --color-warning-50: #fdf6e7;
+  --color-warning-100: #faecc9;
+  --color-warning-500: #b7791f;
+  --color-warning-700: #8a5a16;
+  --color-danger-50: #fdf1f0;
+  --color-danger-100: #f9dcd9;
+  --color-danger-500: #c0392b;
+  --color-danger-700: #96291d;
+  --color-info-50: #eef3f8;
+  --color-info-100: #d8e4f0;
+  --color-info-500: #2b6cb0;
+  --color-info-700: #1f5185;
+
+  /* Typography: one modern sans-serif family for both body and headings. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-grotesk), var(--font-geist-sans), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Named brand variables, kept alongside the Tailwind theme tokens above so
+   the primary CARISCA colours are reachable directly as CSS custom
+   properties (for one-off inline styles, SVGs, and non-Tailwind contexts).
+   --------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --carisca-blue: var(--color-brand-700);
+  --carisca-blue-dark: var(--color-brand-900);
+  --carisca-blue-light: var(--color-accent-400);
+  --carisca-accent: var(--color-accent-500);
+
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --muted: var(--color-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04";
+}
+
+/* Tight, confident tracking on the display face at heading sizes. */
+.font-display {
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--color-accent-200);
+  color: var(--color-brand-900);
+}
+
+/* A single consistent focus ring across the whole app. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Firefox-friendly thin scrollbars inside scroll regions. */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+.scrollbar-slim::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 999px;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion, kept deliberately small and fully disabled when the OS asks for it
+   --------------------------------------------------------------------------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.55s var(--ease-out-soft) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s var(--ease-out-soft) both;
+}
+
+/* Scroll reveal: elements start hidden and are revealed by the Reveal component. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.6s var(--ease-out-soft),
+    transform 0.6s var(--ease-out-soft);
+}
+
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-paper-deep);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.65),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Print, used by the booking receipt
+   --------------------------------------------------------------------------- */
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}
