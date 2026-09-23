@@ -17,10 +17,23 @@ import { cn } from "@/lib/utils";
  * instead, at every call site, with no further changes needed.
  */
 
-const SIZES = {
+/** Square placeholder box, used only when no real logo file is configured yet. */
+const PLACEHOLDER_SIZES = {
   sm: { box: "size-8", icon: "size-3.5", radius: "rounded-md" },
   md: { box: "size-10", icon: "size-4.5", radius: "rounded-lg" },
   lg: { box: "size-14", icon: "size-6", radius: "rounded-xl" },
+} as const;
+
+/**
+ * Real logo files are wordmarks (icon + name side by side), not square marks, so
+ * they're given a fixed height and a generous max width instead of a square box.
+ * `object-contain` then renders them at the full height without artificially
+ * shrinking them to fit a width that was never meant for a wide image.
+ */
+const IMAGE_SIZES = {
+  sm: { height: "h-9", maxWidth: "w-32", px: 128 },
+  md: { height: "h-12", maxWidth: "w-44", px: 176 },
+  lg: { height: "h-20", maxWidth: "w-72", px: 288 },
 } as const;
 
 export function BrandLogo({
@@ -32,21 +45,28 @@ export function BrandLogo({
 }: {
   variant: "studio" | "carisca";
   src?: string | null;
-  size?: keyof typeof SIZES;
+  size?: keyof typeof PLACEHOLDER_SIZES;
   tone?: "light" | "dark";
   className?: string;
 }) {
-  const dims = SIZES[size];
   const label = variant === "studio" ? "One Button Studio logo" : "CARISCA logo";
 
   if (src) {
+    const dims = IMAGE_SIZES[size];
     return (
-      <span className={cn("relative shrink-0 overflow-hidden", dims.box, dims.radius, className)}>
-        <Image src={src} alt={label} fill sizes="56px" className="object-contain" />
+      <span className={cn("relative inline-block shrink-0", dims.height, dims.maxWidth, className)}>
+        <Image
+          src={src}
+          alt={label}
+          fill
+          sizes={`${dims.px}px`}
+          className="object-contain object-left"
+        />
       </span>
     );
   }
 
+  const dims = PLACEHOLDER_SIZES[size];
   const Icon = variant === "studio" ? Aperture : Landmark;
 
   return (

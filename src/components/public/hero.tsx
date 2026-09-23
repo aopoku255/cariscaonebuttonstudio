@@ -12,6 +12,7 @@ export function Hero({
   tagline,
   location,
   heroImageUrl,
+  logoUrl,
   fromMinor,
 }: {
   studioName: string;
@@ -19,6 +20,7 @@ export function Hero({
   tagline: string;
   location: string;
   heroImageUrl: string;
+  logoUrl: string;
   fromMinor: number | null;
 }) {
   return (
@@ -32,17 +34,14 @@ export function Hero({
       <Container className="relative">
         <div className="grid items-center gap-12 py-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-24">
           <div className="animate-fade-up">
-            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink-soft">
+            {/* <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink-soft">
               <MapPin className="size-3.5 text-brand-600" aria-hidden />
               {location}
-            </p>
+            </p> */}
 
-            <div className="mt-6 flex items-center gap-3">
-              <BrandLogo variant="studio" size="lg" />
-              <span className="text-[11.5px] font-semibold tracking-[0.16em] text-muted uppercase">
-                By {parentOrg}
-              </span>
-            </div>
+            {/* <div className="mt-6">
+              <BrandLogo variant="studio" src={logoUrl} size="lg" />
+            </div> */}
 
             <h1 className="font-display mt-4 text-[40px] leading-[1.05] font-semibold tracking-tight text-balance text-ink sm:text-[54px] lg:text-[58px]">
               {studioName}

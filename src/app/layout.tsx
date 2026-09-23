@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 import { ToastProvider } from "@/components/ui/toast";
 import { appUrl } from "@/lib/env";
@@ -19,12 +19,13 @@ const geistMono = Geist_Mono({
 });
 
 /**
- * Space Grotesk is the display face: a modern, geometric sans with enough
- * character for headings without reading as decorative, keeping the site
- * feeling institutional and premium rather than like a generic dashboard.
+ * Plus Jakarta Sans is the display face: a clean, modern geometric sans with
+ * enough weight contrast for headings without reading as decorative, keeping
+ * the site feeling institutional and premium rather than like a generic
+ * dashboard.
  */
-const grotesk = Space_Grotesk({
-  variable: "--font-grotesk",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
   display: "swap",
   weight: ["500", "600", "700"],
@@ -86,7 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en-GH"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} ${grotesk.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ToastProvider>{children}</ToastProvider>

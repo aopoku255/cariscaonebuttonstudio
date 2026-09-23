@@ -74,7 +74,7 @@
   /* Typography: one modern sans-serif family for both body and headings. */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: var(--font-grotesk), var(--font-geist-sans), ui-sans-serif,
+  --font-display: var(--font-jakarta), var(--font-geist-sans), ui-sans-serif,
     system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 

@@ -29,17 +29,7 @@ export async function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
-            <div className="flex items-center gap-2.5">
-              <BrandLogo variant="studio" src={studio.logoUrl} size="md" tone="dark" />
-              <span className="leading-tight">
-                <span className="block text-[13.5px] font-bold tracking-tight text-white">
-                  {studio.name}
-                </span>
-                <span className="block text-[10.5px] font-medium tracking-[0.14em] text-brand-300 uppercase">
-                  By {studio.parentOrg}
-                </span>
-              </span>
-            </div>
+            <BrandLogo variant="studio" src="/logo-white.svg" size="lg" tone="dark" />
             <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-brand-200">
               {studio.description}
             </p>
@@ -129,7 +119,7 @@ export async function SiteFooter() {
 
         <div className="mt-12 flex flex-col gap-4 border-t border-brand-800 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <BrandLogo variant="carisca" src={studio.cariscaLogoUrl} size="sm" tone="dark" />
+            {/* <BrandLogo variant="carisca" src={studio.cariscaLogoUrl} size="sm" tone="dark" /> */}
             <p className="text-[12.5px] leading-snug text-brand-300">
               {studio.name} is a production space by {studio.parentOrg}, the Centre for
               Applied Research and Innovation in Supply Chain Africa.

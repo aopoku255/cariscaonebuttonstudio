@@ -112,6 +112,7 @@ export default async function HomePage() {
         tagline={studio.tagline}
         location={studio.location}
         heroImageUrl={studio.heroImageUrl}
+        logoUrl={studio.logoUrl}
         fromMinor={cheapest}
       />
 

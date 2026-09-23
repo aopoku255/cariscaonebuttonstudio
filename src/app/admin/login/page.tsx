@@ -25,16 +25,8 @@ export default async function AdminLoginPage({ searchParams }: PageProps<"/admin
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
-            <Link href="/" className="inline-flex items-center gap-2.5">
-              <BrandLogo variant="studio" size="lg" tone="dark" />
-              <span className="text-left leading-tight">
-                <span className="block text-[14px] font-bold tracking-tight text-white">
-                  One Button Studio
-                </span>
-                <span className="block text-[11px] font-medium tracking-[0.14em] text-brand-300 uppercase">
-                  By CARISCA
-                </span>
-              </span>
+            <Link href="/" className="inline-flex items-center">
+              <BrandLogo variant="studio" src="/logo-white.svg" size="lg" tone="dark" />
             </Link>
           </div>
 

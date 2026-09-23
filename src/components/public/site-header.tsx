@@ -63,20 +63,8 @@ export function SiteHeader({
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          className="group flex items-center gap-2.5"
-          aria-label={`${studioName}, by ${parentOrg}`}
-        >
+        <Link href="/" className="group flex items-center" aria-label={`${studioName}, by ${parentOrg}`}>
           <BrandLogo variant="studio" src={logoUrl} size="md" />
-          <span className="hidden leading-tight sm:block">
-            <span className="block text-[13.5px] font-bold tracking-tight text-ink">
-              {studioName}
-            </span>
-            <span className="block text-[10.5px] font-medium tracking-[0.14em] text-muted uppercase">
-              By {parentOrg}
-            </span>
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">

@@ -123,7 +123,7 @@ export function AdminShell({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-brand-800 bg-brand-950 transition-[transform,width] duration-200 lg:translate-x-0",
-          collapsed ? "lg:w-19" : "lg:w-64",
+          collapsed ? "lg:w-24" : "lg:w-64",
           "w-64",
           open ? "translate-x-0" : "-translate-x-full",
         )}
@@ -132,17 +132,22 @@ export function AdminShell({
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-brand-800 px-4">
           <Link
             href="/admin/dashboard"
-            className={cn("flex min-w-0 items-center gap-2.5", collapsed && "lg:justify-center")}
+            className={cn("flex min-w-0 items-center", collapsed && "lg:justify-center")}
           >
-            <BrandLogo variant="studio" size="sm" tone="dark" />
-            <span className={cn("min-w-0 leading-tight", collapsed && "lg:hidden")}>
-              <span className="block truncate text-[12px] font-bold tracking-tight text-white">
-                ONE BUTTON STUDIO
-              </span>
-              <span className="block text-[10px] font-medium tracking-[0.12em] text-brand-300 uppercase">
-                By CARISCA
-              </span>
-            </span>
+            <BrandLogo
+              variant="studio"
+              src="/logo-white.svg"
+              size="sm"
+              tone="dark"
+              className={cn(collapsed && "lg:hidden")}
+            />
+            <BrandLogo
+              variant="studio"
+              src="/icon.svg"
+              size="sm"
+              tone="dark"
+              className={cn("hidden w-9", collapsed && "lg:block")}
+            />
           </Link>
 
           {/* Desktop collapse toggle */}
@@ -269,7 +274,7 @@ export function AdminShell({
       <div
         className={cn(
           "flex min-w-0 flex-1 flex-col transition-[padding] duration-200",
-          collapsed ? "lg:pl-19" : "lg:pl-64",
+          collapsed ? "lg:pl-24" : "lg:pl-64",
         )}
       >
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-paper/90 px-4 backdrop-blur-md sm:px-6 lg:hidden">
