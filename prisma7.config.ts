@@ -29,7 +29,7 @@ export default defineConfig({
   datasource: {
     url: cliDatabaseUrl(process.env.DB_NAME),
     // Shared hosting typically grants the app user rights on its own database only,
-    // not global CREATE DATABASE — so `migrate dev` can't spin up a shadow database
+    // not global CREATE DATABASE, so `migrate dev` can't spin up a shadow database
     // on the fly. DB_SHADOW_NAME must point to a second, empty database that the same
     // user has been granted privileges on. See https://pris.ly/d/migrate-shadow.
     shadowDatabaseUrl: cliDatabaseUrl(process.env.DB_SHADOW_NAME),

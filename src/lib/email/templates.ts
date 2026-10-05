@@ -135,11 +135,17 @@ function detailsText(data: BookingEmailData): string {
 }
 
 function signature(data: BookingEmailData): string {
-  return `${data.studioName}\n${data.studioLocation}\n${data.studioPhone} · ${data.studioEmail}`;
+  return `${data.studioName}\n${data.studioLocation}\n${data.studioPhone} · ${data.studioEmail}\n\nStudio policies: ${appUrl()}/terms-and-conditions`;
 }
 
 function footerHtml(data: BookingEmailData): string {
-  return `${escapeHtml(data.studioName)} · ${escapeHtml(data.studioLocation)}<br>${escapeHtml(data.studioPhone)} · <a href="mailto:${escapeHtml(data.studioEmail)}" style="color:${BRAND};">${escapeHtml(data.studioEmail)}</a>`;
+  const base = appUrl();
+  const link = (path: string, label: string) =>
+    `<a href="${base}${path}" style="color:${BRAND};">${label}</a>`;
+  return (
+    `${escapeHtml(data.studioName)} · ${escapeHtml(data.studioLocation)}<br>${escapeHtml(data.studioPhone)} · <a href="mailto:${escapeHtml(data.studioEmail)}" style="color:${BRAND};">${escapeHtml(data.studioEmail)}</a>` +
+    `<br>${link("/terms-and-conditions", "Terms")} · ${link("/booking-policy", "Booking and cancellation")} · ${link("/refund-policy", "Refunds")} · ${link("/privacy-policy", "Privacy")}`
+  );
 }
 
 /** Full link to a booking, carrying the access token so the recipient can open it. */

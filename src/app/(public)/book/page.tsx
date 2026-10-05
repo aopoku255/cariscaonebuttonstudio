@@ -76,6 +76,8 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
             category: pkg.category,
             isPopular: pkg.isPopular,
             studentOnly: pkg.studentOnly,
+            requiresRecordingConsent: pkg.requiresRecordingConsent,
+            requiresParticipantRelease: pkg.requiresParticipantRelease,
             features: pkg.features.map((feature) => ({
               id: feature.id,
               label: feature.label,

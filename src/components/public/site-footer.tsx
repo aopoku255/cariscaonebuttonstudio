@@ -2,30 +2,45 @@ import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
 
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { POLICY_CATALOGUE, policyPath } from "@/lib/policies/catalogue";
+import { getPublishedPolicyLinks } from "@/lib/policies/queries";
 import { getOpeningHoursSummary, getStudioProfile } from "@/lib/queries/public";
 
-const EXPLORE_LINKS = [
-  { href: "/packages", label: "Packages & pricing" },
+const STUDIO_LINKS = [
+  { href: "/#about", label: "About" },
+  { href: "/studio", label: "Studio" },
+  { href: "/packages", label: "Packages" },
+  { href: "/memberships", label: "Memberships" },
   { href: "/students", label: "Student Studio" },
-  { href: "/memberships", label: "Creator memberships" },
-  { href: "/studio", label: "The studio & equipment" },
-  { href: "/corporate", label: "Corporate & institutional" },
-  { href: "/faq", label: "Frequently asked questions" },
-];
-
-const BOOKING_LINKS = [
-  { href: "/book", label: "Book now" },
+  { href: "/book", label: "Book Now" },
   { href: "/account", label: "My bookings" },
-  { href: "/booking/lookup", label: "Find a booking" },
-  { href: "/contact", label: "Contact the studio" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export async function SiteFooter() {
-  const [studio, hours] = await Promise.all([getStudioProfile(), getOpeningHoursSummary()]);
+  const [studio, hours, published] = await Promise.all([
+    getStudioProfile(),
+    getOpeningHoursSummary(),
+    getPublishedPolicyLinks(),
+  ]);
+  // Only policies that are actually published are linked, in the catalogue's order.
+  const publishedSlugs = new Set(published.map((policy) => policy.slug));
+  const standardSlugs = new Set(POLICY_CATALOGUE.map((policy) => policy.slug));
+  const policyLinks = [
+    ...POLICY_CATALOGUE.filter((policy) => publishedSlugs.has(policy.slug)).map((policy) => ({
+      href: policyPath(policy.slug),
+      label: policy.shortTitle,
+    })),
+    // Further policies an administrator has created and published.
+    ...published
+      .filter((policy) => !standardSlugs.has(policy.slug))
+      .map((policy) => ({ href: policyPath(policy.slug), label: policy.title })),
+  ];
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto border-t border-line bg-brand-950 text-brand-100">
+    <footer className="print:hidden mt-auto border-t border-line bg-brand-950 text-brand-100">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
@@ -37,10 +52,10 @@ export async function SiteFooter() {
 
           <div>
             <h2 className="text-[11.5px] font-semibold tracking-[0.14em] text-brand-300 uppercase">
-              Explore
+              {studio.name}
             </h2>
             <ul className="mt-4 space-y-2.5">
-              {EXPLORE_LINKS.map((link) => (
+              {STUDIO_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -55,10 +70,10 @@ export async function SiteFooter() {
 
           <div>
             <h2 className="text-[11.5px] font-semibold tracking-[0.14em] text-brand-300 uppercase">
-              Booking
+              Policies
             </h2>
             <ul className="mt-4 space-y-2.5">
-              {BOOKING_LINKS.map((link) => (
+              {policyLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -128,16 +143,10 @@ export async function SiteFooter() {
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link
-              href="/terms"
+              href="/booking/lookup"
               className="text-[12.5px] text-brand-300 transition-colors hover:text-accent-300"
             >
-              Terms & cancellation
-            </Link>
-            <Link
-              href="/privacy"
-              className="text-[12.5px] text-brand-300 transition-colors hover:text-accent-300"
-            >
-              Privacy
+              Find a booking
             </Link>
             <Link
               href="/admin"

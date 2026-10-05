@@ -255,4 +255,36 @@ body {
     border: none !important;
     padding: 0 !important;
   }
+
+  /* Policy documents: plain black text, no section split across pages where avoidable. */
+  .policy-article,
+  .policy-header {
+    max-width: none !important;
+  }
+  .policy-article p,
+  .policy-article li {
+    color: #111111 !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+  .policy-section h2 {
+    break-after: avoid;
+  }
+  .policy-article h3,
+  .policy-article li {
+    break-inside: avoid;
+  }
+  .policy-article a {
+    color: #111111 !important;
+    text-decoration: underline;
+  }
+  .policy-placeholder {
+    background: none !important;
+    border: 1px solid #555555;
+    color: #111111 !important;
+  }
+
+  @page {
+    margin: 18mm 16mm;
+  }
 }

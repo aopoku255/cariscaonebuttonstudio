@@ -12,6 +12,7 @@ import { generatePaymentReference } from "@/lib/booking/reference";
 import { releaseBookingHold } from "@/lib/booking/service";
 import { notifyPaymentSuccessful } from "@/lib/email/notifications";
 import { initializeTransaction, verifyTransaction } from "@/lib/payments/paystack";
+import { resolveRefundTier } from "@/lib/payments/refund-policy";
 import { getBookingPolicy } from "@/lib/settings";
 
 /**
@@ -414,22 +415,11 @@ export async function calculateRefundDue(bookingId: string, now: Date = new Date
   }
 
   const hoursUntil = (booking.startsAt.getTime() - now.getTime()) / 3_600_000;
+  const tier = resolveRefundTier(policy, hoursUntil, booking.status === BookingStatus.NO_SHOW);
 
-  if (hoursUntil >= policy.freeCancellationHours) {
-    return {
-      refundableMinor: booking.totalMinor,
-      percent: 100,
-      note: `Cancelled more than ${policy.freeCancellationHours} hours before the session: full refund.`,
-    };
-  }
-
-  const percent = policy.lateRefundPercent;
   return {
-    refundableMinor: Math.round((booking.totalMinor * percent) / 100),
-    percent,
-    note:
-      percent > 0
-        ? `Cancelled inside ${policy.freeCancellationHours} hours: ${percent}% refund under the current policy.`
-        : `Cancelled inside ${policy.freeCancellationHours} hours: no refund under the current policy.`,
+    refundableMinor: Math.round((booking.totalMinor * tier.percent) / 100),
+    percent: tier.percent,
+    note: tier.note,
   };
 }

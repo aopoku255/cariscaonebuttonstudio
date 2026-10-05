@@ -17,6 +17,7 @@ export interface AdminAddOn {
   priceMinor: number;
   pricingUnit: string;
   maxQuantity: number;
+  studioProduced: boolean;
   isActive: boolean;
   sortOrder: number;
   usageCount: number;
@@ -69,6 +70,13 @@ const FIELDS: FieldDef[] = [
     type: "textarea",
     wide: true,
     placeholder: "What the customer gets.",
+  },
+  {
+    key: "studioProduced",
+    label: "The studio takes part in producing the content",
+    type: "checkbox",
+    description:
+      "For operator, editing and production services. Bookings with this add-on get a releases panel, so staff can record each participant's consent.",
   },
   {
     key: "isActive",
@@ -130,6 +138,7 @@ export function AddOnsManager({ addOns }: { addOns: AdminAddOn[] }) {
         pricingUnit: "PER_BOOKING",
         maxQuantity: "1",
         sortOrder: "0",
+        studioProduced: false,
         isActive: true,
       }}
       toForm={(row) => ({
@@ -140,6 +149,7 @@ export function AddOnsManager({ addOns }: { addOns: AdminAddOn[] }) {
         pricingUnit: row.pricingUnit,
         maxQuantity: String(row.maxQuantity),
         sortOrder: String(row.sortOrder),
+        studioProduced: row.studioProduced,
         isActive: row.isActive,
       })}
       save={(id, values) =>

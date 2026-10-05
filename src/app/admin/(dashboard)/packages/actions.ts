@@ -36,6 +36,8 @@ function toData(input: ReturnType<typeof packageSchema.parse>) {
     isActive: input.isActive,
     isPopular: input.isPopular,
     studentOnly: input.studentOnly,
+    requiresRecordingConsent: input.requiresRecordingConsent,
+    requiresParticipantRelease: input.requiresParticipantRelease,
     sortOrder: input.sortOrder,
     // Membership fields are only meaningful on membership packages.
     includedHours: isMembership ? (input.includedHours ?? null) : null,

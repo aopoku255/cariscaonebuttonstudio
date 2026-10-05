@@ -8,7 +8,7 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       /**
        * Server modules are marked with `import "server-only"`, which throws unless the
-       * bundler resolves it under React's `react-server` condition — something Next.js
+       * bundler resolves it under React's `react-server` condition, something Next.js
        * sets for Server Components but Vitest's SSR pipeline does not. Pointing it at a
        * stub lets the tests exercise the real server modules; the guard still does its
        * job in the actual Next.js build.

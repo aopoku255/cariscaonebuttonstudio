@@ -12,6 +12,7 @@ import {
   saveSettings,
   testEmailConnection,
 } from "@/app/admin/(dashboard)/settings/actions";
+import { CONFIRMABLE_SETTINGS, SETTING_TOKENS } from "@/lib/policies/tokens";
 import type { SettingKey, StudioSettings } from "@/lib/settings";
 
 /**
@@ -136,6 +137,11 @@ export function SettingsForm({
     </div>
   );
 
+  // Confirmable details that are still blank, by their plain label.
+  const outstanding = CONFIRMABLE_SETTINGS.filter((key) => !(values[key] ?? "").trim()).map(
+    (key) => SETTING_TOKENS[key],
+  );
+
   return (
     <div className="space-y-5 pb-24">
       <Card>
@@ -245,11 +251,104 @@ export function SettingsForm({
           {text("cancellation.lateRefundPercent", "Late cancellation refund (%)", {
             description: "What is refunded inside the window. 0 means non-refundable.",
           })}
+          {text("cancellation.partialRefundHours", "Partial refund window (hours)", {
+            description:
+              "Optional middle tier. Cancellations at least this far ahead, but inside the free window, get the partial refund below. 0 switches the tier off.",
+          })}
+          {text("cancellation.partialRefundPercent", "Partial refund (%)", {
+            description: "Only used when the partial refund window is above 0.",
+          })}
+          {text("cancellation.noShowRefundPercent", "No-show refund (%)", {
+            description:
+              "Refund for a booking marked as a no-show. Leave blank to use the late cancellation refund.",
+          })}
           {area(
             "cancellation.policyText",
             "Policy text",
-            "The wording customers actually read.",
+            "The short summary customers see on their booking page.",
             4,
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Operational rules quoted in the policies"
+          description="These appear word for word in the Booking and Cancellation Policy and the Health and Safety policy. A blank rule is shown to the public as a marked placeholder."
+        />
+        <CardBody className="grid gap-5 sm:grid-cols-2">
+          {area(
+            "booking.arrivalGuidance",
+            "Arrival and check-in",
+            "For example how early customers should arrive.",
+            2,
+          )}
+          {area("booking.lateArrivalRule", "Late arrival", undefined, 2)}
+          {area("booking.overtimeRule", "Overtime", undefined, 2)}
+          {area("booking.rescheduleRule", "Rescheduling", undefined, 2)}
+          {text("safety.studioCapacity", "Maximum people in the studio", {
+            description: "The approved capacity, for example \"8 people\".",
+          })}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Legal and policy details"
+          description="Details the policies quote. Enter only what has been confirmed: anything left blank is shown to the public as a marked placeholder rather than guessed."
+        />
+        <CardBody className="grid gap-5 sm:grid-cols-2">
+          {outstanding.length ? (
+            <Alert tone="warning" className="sm:col-span-2" title={`${outstanding.length} still to confirm`}>
+              {outstanding.join(", ")}.
+            </Alert>
+          ) : (
+            <Alert tone="success" className="sm:col-span-2" title="Every detail has been filled in" />
+          )}
+          {text("legal.operatorName", "Legal name of the studio operator", {
+            description: "The body legally responsible for the studio.",
+            wide: true,
+          })}
+          {text("legal.supportEmail", "Studio support contact")}
+          {text("legal.privacyEmail", "Privacy contact")}
+          {text("legal.managerContact", "Studio manager contact")}
+          {text("legal.emergencyContact", "Approved emergency contact")}
+          {text("legal.knustReportingContact", "KNUST safeguarding and reporting contact", {
+            description: "Use the official contact given by the University.",
+            wide: true,
+          })}
+          {select(
+            "legal.dpcStatus",
+            "Data Protection Commission registration status",
+            [
+              { value: "NOT_CONFIRMED", label: "Not yet confirmed" },
+              { value: "REGISTERED", label: "Registered" },
+            ],
+            { description: "The Privacy Policy only says \"registered\" when this is set and a number is entered." },
+          )}
+          {text("legal.dpcNumber", "Data Protection Commission registration number")}
+          {text("legal.dataProtectionSupervisor", "Data protection supervisor", { wide: true })}
+          {text("legal.retentionPeriod", "Approved retention period", {
+            description: "For example \"7 years after the booking\". Leave blank until approved.",
+          })}
+          {text("legal.refundProcessingTime", "Approved refund processing time", {
+            description: "For example \"within 10 working days\". Leave blank until approved.",
+          })}
+          {area(
+            "legal.providerFeesRule",
+            "Payment provider fees on refunds",
+            "State whether fees charged by the payment provider are refunded.",
+            2,
+          )}
+          {toggle(
+            "legal.recordAcceptanceDevice",
+            "Record IP address and browser details with each policy acceptance",
+            "Leave off until this has been approved. The policy versions accepted and the time are always recorded.",
+          )}
+          {toggle(
+            "cookies.nonEssentialEnabled",
+            "Show the cookie consent banner",
+            "Only needed once analytics or other non-essential cookies are added to the site.",
           )}
         </CardBody>
       </Card>

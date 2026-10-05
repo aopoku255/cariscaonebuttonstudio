@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
+  // The policy pages replaced two older, shorter pages. Keep their addresses working.
+  async redirects() {
+    return [
+      { source: "/terms", destination: "/terms-and-conditions", permanent: true },
+      { source: "/privacy", destination: "/privacy-policy", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {

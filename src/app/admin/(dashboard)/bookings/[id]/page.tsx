@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { BookingDetailActions } from "@/components/admin/booking-detail-actions";
 import { PageHeader } from "@/components/admin/page-header";
+import { ReleasesPanel } from "@/components/admin/releases-panel";
 import { BookingStatusBadge, PaymentStatusBadge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { requireAdminPage } from "@/lib/auth/guard";
@@ -38,7 +39,10 @@ export default async function AdminBookingDetailPage({
     where: { id },
     include: {
       customer: true,
-      addOns: true,
+      addOns: { include: { addOn: { select: { studioProduced: true } } } },
+      policyAcceptance: true,
+      releases: { orderBy: { createdAt: "asc" } },
+      package: { select: { requiresParticipantRelease: true } },
       payments: { orderBy: { createdAt: "desc" } },
       membership: { select: { id: true, reference: true } },
       createdByAdmin: { select: { name: true } },
@@ -49,6 +53,10 @@ export default async function AdminBookingDetailPage({
   if (!booking) notFound();
 
   const refund = await calculateRefundDue(booking.id);
+  const acceptance = booking.policyAcceptance;
+  const studioProduced = booking.addOns.some((line) => line.addOn?.studioProduced);
+  const showReleases =
+    studioProduced || booking.package?.requiresParticipantRelease || booking.releases.length > 0;
   const canWrite = roleHas(admin.role, "bookings:write");
   const canManagePayments = roleHas(admin.role, "payments:manage");
 
@@ -203,6 +211,80 @@ export default async function AdminBookingDetailPage({
               )}
             </CardBody>
           </Card>
+
+          <Card>
+            <CardHeader
+              title="Policy acceptance"
+              description="What the customer agreed to when the booking was placed online."
+            />
+            <CardBody>
+              {acceptance ? (
+                <dl className="grid gap-x-8 gap-y-3 text-[13.5px] sm:grid-cols-2">
+                  {[
+                    ["Terms and Conditions", acceptance.termsVersion ? `Agreed, version ${acceptance.termsVersion}` : "Not recorded"],
+                    ["Studio Policy", acceptance.studioPolicyVersion ? `Acknowledged, version ${acceptance.studioPolicyVersion}` : "Not recorded"],
+                    ["Privacy Policy", acceptance.privacyVersion ? `Read, version ${acceptance.privacyVersion}` : "Not recorded"],
+                    [
+                      "Recording permissions",
+                      acceptance.recordingConsent === null
+                        ? "Not asked for this package"
+                        : acceptance.recordingConsent
+                          ? "Confirmed"
+                          : "Not confirmed",
+                    ],
+                    ["Accepted at", formatDateTime(acceptance.acceptedAt)],
+                    ["Device details", acceptance.ipAddress ? `${acceptance.ipAddress}${acceptance.userAgent ? `, ${acceptance.userAgent}` : ""}` : "Not recorded"],
+                  ].map(([label, value]) => (
+                    <div key={label} className="min-w-0">
+                      <dt className="text-[11.5px] font-semibold tracking-wide text-muted uppercase">{label}</dt>
+                      <dd className="mt-0.5 break-words text-ink-soft">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-[13.5px] leading-relaxed text-muted">
+                  {booking.source === "ADMIN"
+                    ? "This booking was created by staff, so no online acceptance was captured. Make sure the customer has seen the studio policies."
+                    : "No acceptance is recorded. This booking was placed before policy acceptance was introduced."}
+                </p>
+              )}
+            </CardBody>
+          </Card>
+
+          {showReleases ? (
+            <Card>
+              <CardHeader
+                title="Participant releases"
+                description={
+                  studioProduced
+                    ? "The studio is helping to produce this content, so each participant's consent must be on file before it is produced or released."
+                    : "Consent from the people appearing in this recording."
+                }
+              />
+              <CardBody>
+                {canWrite ? (
+                  <ReleasesPanel
+                    bookingId={booking.id}
+                    releases={booking.releases.map((release) => ({
+                      id: release.id,
+                      participantName: release.participantName,
+                      participantContact: release.participantContact,
+                      isMinor: release.isMinor,
+                      guardianName: release.guardianName,
+                      scopeOfUse: release.scopeOfUse,
+                      status: release.status,
+                      signedOn: release.signedOn ? release.signedOn.toISOString().slice(0, 10) : null,
+                      notes: release.notes,
+                    }))}
+                  />
+                ) : (
+                  <p className="text-[13.5px] text-muted">
+                    {booking.releases.length} release{booking.releases.length === 1 ? "" : "s"} recorded.
+                  </p>
+                )}
+              </CardBody>
+            </Card>
+          ) : null}
 
           {booking.notifications.length > 0 ? (
             <Card>

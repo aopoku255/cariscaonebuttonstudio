@@ -57,6 +57,7 @@ export async function saveAddOn(
     priceMinor: parsed.data.priceMajor,
     pricingUnit: parsed.data.pricingUnit as AddOnPricingUnit,
     maxQuantity: parsed.data.maxQuantity,
+    studioProduced: parsed.data.studioProduced,
     isActive: parsed.data.isActive,
     sortOrder: parsed.data.sortOrder,
   };

@@ -45,6 +45,8 @@ export async function saveSettings(
     "pricing.taxPercent",
     "cancellation.freeCancellationHours",
     "cancellation.lateRefundPercent",
+    "cancellation.partialRefundHours",
+    "cancellation.partialRefundPercent",
     "notifications.reminderHoursBefore",
   ];
 
@@ -56,6 +58,39 @@ export async function saveSettings(
         [key]: "Enter a number",
       });
     }
+  }
+
+  const percentKeys: SettingKey[] = [
+    "cancellation.lateRefundPercent",
+    "cancellation.partialRefundPercent",
+    "cancellation.noShowRefundPercent",
+  ];
+  for (const key of percentKeys) {
+    const raw = accepted[key];
+    // The no-show refund may be left blank, meaning "same as the late refund".
+    if (raw === undefined || (key === "cancellation.noShowRefundPercent" && raw.trim() === "")) continue;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      return actionError("A refund percentage must be between 0 and 100.", {
+        [key]: "Enter a number from 0 to 100",
+      });
+    }
+  }
+
+  const freeWindow = Number(
+    accepted["cancellation.freeCancellationHours"] ??
+      SETTING_DEFAULTS["cancellation.freeCancellationHours"],
+  );
+  const partialWindow = Number(accepted["cancellation.partialRefundHours"] ?? 0);
+  if (partialWindow > 0 && partialWindow >= freeWindow) {
+    return actionError(
+      "The partial refund window must be shorter than the free cancellation window.",
+      { "cancellation.partialRefundHours": "Must be below the free window, or 0" },
+    );
+  }
+
+  if (accepted["legal.dpcStatus"] && !["NOT_CONFIRMED", "REGISTERED"].includes(accepted["legal.dpcStatus"])) {
+    return actionError("Choose a registration status.", { "legal.dpcStatus": "Choose one" });
   }
 
   const interval = Number(accepted["booking.intervalMinutes"] ?? SETTING_DEFAULTS["booking.intervalMinutes"]);
@@ -91,6 +126,8 @@ export async function saveSettings(
   for (const path of ["/admin/settings", "/", "/book", "/packages", "/students", "/faq", "/contact"]) {
     revalidatePath(path);
   }
+  // The policy pages quote settings directly, so they must pick up the change too.
+  revalidatePath("/", "layout");
 
   return actionOk(
     undefined,

@@ -35,6 +35,7 @@ export default async function AdminAddOnsPage() {
           priceMinor: addOn.priceMinor,
           pricingUnit: addOn.pricingUnit,
           maxQuantity: addOn.maxQuantity,
+          studioProduced: addOn.studioProduced,
           isActive: addOn.isActive,
           sortOrder: addOn.sortOrder,
           usageCount: addOn._count.bookingAddOns,

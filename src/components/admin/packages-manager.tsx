@@ -32,6 +32,8 @@ export interface AdminPackage {
   isActive: boolean;
   isPopular: boolean;
   studentOnly: boolean;
+  requiresRecordingConsent: boolean;
+  requiresParticipantRelease: boolean;
   sortOrder: number;
   includedHours: number | null;
   extraHourDiscountPercent: number | null;
@@ -63,6 +65,8 @@ interface FormState {
   isActive: boolean;
   isPopular: boolean;
   studentOnly: boolean;
+  requiresRecordingConsent: boolean;
+  requiresParticipantRelease: boolean;
   sortOrder: string;
   features: string[];
   includedHours: string;
@@ -84,6 +88,8 @@ function emptyForm(): FormState {
     isActive: true,
     isPopular: false,
     studentOnly: false,
+    requiresRecordingConsent: false,
+    requiresParticipantRelease: false,
     sortOrder: "0",
     features: [""],
     includedHours: "",
@@ -106,6 +112,8 @@ function toForm(pkg: AdminPackage): FormState {
     isActive: pkg.isActive,
     isPopular: pkg.isPopular,
     studentOnly: pkg.studentOnly,
+    requiresRecordingConsent: pkg.requiresRecordingConsent,
+    requiresParticipantRelease: pkg.requiresParticipantRelease,
     sortOrder: String(pkg.sortOrder),
     features: pkg.features.length ? pkg.features : [""],
     includedHours: pkg.includedHours !== null ? String(pkg.includedHours) : "",
@@ -170,6 +178,8 @@ export function PackagesManager({ packages }: { packages: AdminPackage[] }) {
       isActive: form.isActive,
       isPopular: form.isPopular,
       studentOnly: form.studentOnly,
+      requiresRecordingConsent: form.requiresRecordingConsent,
+      requiresParticipantRelease: form.requiresParticipantRelease,
       sortOrder: form.sortOrder,
       features: form.features.filter((feature) => feature.trim()),
       includedHours: form.includedHours || undefined,
@@ -611,6 +621,18 @@ export function PackagesManager({ packages }: { packages: AdminPackage[] }) {
               description="Only bookable by verified KNUST students. Shown with a KNUST Student badge and only offered first on the booking flow when the customer selects that category."
               checked={form.studentOnly}
               onChange={(event) => set("studentOnly", event.target.checked)}
+            />
+            <Checkbox
+              label="Ask for recording permission at checkout"
+              description="Adds a required tick at checkout confirming the customer has permission from everyone appearing in the recording."
+              checked={form.requiresRecordingConsent}
+              onChange={(event) => set("requiresRecordingConsent", event.target.checked)}
+            />
+            <Checkbox
+              label="Participant release form required"
+              description="Tells the customer at checkout to bring a signed release form for each participant."
+              checked={form.requiresParticipantRelease}
+              onChange={(event) => set("requiresParticipantRelease", event.target.checked)}
             />
             {isMembership ? (
               <Checkbox

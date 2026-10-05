@@ -1,9 +1,11 @@
+import { CookieConsent } from "@/components/public/cookie-consent";
 import { SiteFooter } from "@/components/public/site-footer";
 import { SiteHeader } from "@/components/public/site-header";
 import { getStudioProfile } from "@/lib/queries/public";
+import { getSettings, settingBool } from "@/lib/settings";
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
-  const studio = await getStudioProfile();
+  const [studio, settings] = await Promise.all([getStudioProfile(), getSettings()]);
 
   return (
     <>
@@ -18,6 +20,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <SiteFooter />
+      {settingBool(settings, "cookies.nonEssentialEnabled") ? <CookieConsent /> : null}
     </>
   );
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { clientIp } from "@/lib/audit";
 import { bookingPath } from "@/lib/booking/access";
 import { BookingError, createBooking } from "@/lib/booking/service";
@@ -7,6 +9,7 @@ import { notifyBookingCreated } from "@/lib/email/notifications";
 import { isPaystackConfigured } from "@/lib/env";
 import { PaymentError, startBookingPayment } from "@/lib/payments/service";
 import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
+import { getSettings, settingBool } from "@/lib/settings";
 import { createBookingSchema } from "@/lib/validation/booking";
 import { fieldErrors } from "@/lib/validation/common";
 
@@ -51,6 +54,10 @@ export async function submitBooking(payload: unknown): Promise<SubmitBookingResu
     };
   }
 
+  // Device details are kept with the acceptance only once the studio has approved it.
+  const recordDevice = settingBool(await getSettings(), "legal.recordAcceptanceDevice");
+  const userAgent = recordDevice ? (await headers()).get("user-agent") : null;
+
   let created;
   try {
     created = await createBooking({
@@ -69,6 +76,10 @@ export async function submitBooking(payload: unknown): Promise<SubmitBookingResu
       purpose: parsed.data.purpose ?? null,
       specialRequirements: parsed.data.specialRequirements ?? null,
       useMembership: parsed.data.useMembership,
+      acceptance: {
+        recordingConsent: parsed.data.acceptance.recordingConsent,
+        ...(recordDevice ? { ipAddress: ip, userAgent } : {}),
+      },
     });
   } catch (error) {
     if (error instanceof BookingError) {

@@ -49,6 +49,8 @@ export const packageSchema = z.object({
   isActive: z.boolean().default(true),
   isPopular: z.boolean().default(false),
   studentOnly: z.boolean().default(false),
+  requiresRecordingConsent: z.boolean().default(false),
+  requiresParticipantRelease: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
   features: z.array(z.string().trim().max(160)).max(20).default([]),
 
@@ -72,6 +74,7 @@ export const addOnSchema = z.object({
   priceMajor: moneyMajorSchema,
   pricingUnit: enumSchema(AddOnPricingUnit),
   maxQuantity: z.coerce.number().int().min(1).max(20).default(1),
+  studioProduced: z.boolean().default(false),
   isActive: z.boolean().default(true),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
 });
@@ -249,4 +252,68 @@ export const paymentFilterSchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
+});
+
+/* -------------------------------------------------------------------------- */
+/* Policies                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const optionalDateKey = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date")
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => (value ? value : undefined));
+
+export const policyVersionSchema = z.object({
+  title: z.string().trim().min(3, "Enter a title").max(160, "That title is too long"),
+  version: z
+    .string()
+    .trim()
+    .regex(/^\d+(\.\d+){0,2}$/, "Use a version like 1.0 or 2.1"),
+  content: z
+    .string()
+    .min(20, "The policy has no content yet")
+    .max(200_000, "The policy is too long to save"),
+  effectiveDate: optionalDateKey,
+  lastUpdatedDate: optionalDateKey,
+  changeReason: optionalText(1000),
+});
+
+export const newPolicySchema = z.object({
+  title: z.string().trim().min(3, "Enter a title").max(160, "That title is too long"),
+  summary: optionalText(400),
+});
+
+/* -------------------------------------------------------------------------- */
+/* Equipment incidents and content releases                                    */
+/* -------------------------------------------------------------------------- */
+
+export const incidentSchema = z.object({
+  equipmentId: optionalText(64),
+  itemName: optionalText(160),
+  bookingReference: optionalText(40),
+  category: z.enum(["WEAR_AND_TEAR", "ACCIDENTAL", "NEGLIGENT", "INTENTIONAL"], "Choose a category"),
+  status: z.enum(["OPEN", "UNDER_REVIEW", "RESOLVED"]).default("OPEN"),
+  description: z.string().trim().min(5, "Describe what happened").max(4000),
+  occurredOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date"),
+  cost: z
+    .string()
+    .trim()
+    .regex(/^(\d+(\.\d{1,2})?)?$/, "Enter an amount like 550 or 550.00")
+    .optional()
+    .transform((value) => (value ? Math.round(Number.parseFloat(value) * 100) : null)),
+  resolutionNotes: optionalText(4000),
+});
+
+export const releaseSchema = z.object({
+  participantName: z.string().trim().min(2, "Enter the participant's name").max(160),
+  participantContact: optionalText(160),
+  isMinor: z.boolean().default(false),
+  guardianName: optionalText(160),
+  scopeOfUse: optionalText(2000),
+  status: z.enum(["PENDING", "SIGNED", "WITHDRAWN"]).default("PENDING"),
+  signedOn: optionalDateKey,
+  notes: optionalText(2000),
 });

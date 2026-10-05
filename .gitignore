@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — never commit real secrets, but do commit the template
+# env files: never commit real secrets, but do commit the template
 .env*
 !.env.example
 

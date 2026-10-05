@@ -58,6 +58,43 @@ export const SETTING_DEFAULTS = {
   "cancellation.lateRefundPercent": "0",
   "cancellation.policyText":
     "Cancel more than 24 hours before your session for a full refund or a free reschedule. Inside 24 hours, bookings are non-refundable.",
+  /// Optional middle tier. Cancellations at least this many hours ahead, but inside
+  /// the free window, are refunded at "partialRefundPercent". 0 switches the tier off.
+  "cancellation.partialRefundHours": "0",
+  "cancellation.partialRefundPercent": "0",
+  /// Refund for a booking marked as a no-show.
+  /// Blank means "same as the late cancellation refund".
+  "cancellation.noShowRefundPercent": "",
+
+  // Operational rules quoted in the policies. Blank values appear on the public
+  // policy pages as a marked placeholder until an administrator fills them in.
+  "booking.arrivalGuidance": "",
+  "booking.lateArrivalRule": "",
+  "booking.overtimeRule": "",
+  "booking.rescheduleRule": "",
+  "safety.studioCapacity": "",
+
+  // Legal and policy details. Nothing here is guessed: every value stays blank (and
+  // shows as a placeholder) until the studio confirms it.
+  "legal.operatorName": "",
+  "legal.supportEmail": "",
+  "legal.privacyEmail": "",
+  "legal.managerContact": "",
+  "legal.emergencyContact": "",
+  "legal.knustReportingContact": "",
+  /// NOT_CONFIRMED or REGISTERED.
+  "legal.dpcStatus": "NOT_CONFIRMED",
+  "legal.dpcNumber": "",
+  "legal.dataProtectionSupervisor": "",
+  "legal.retentionPeriod": "",
+  "legal.refundProcessingTime": "",
+  "legal.providerFeesRule": "",
+  /// Store IP address and browser details with each policy acceptance. Off until the
+  /// studio has approved doing so.
+  "legal.recordAcceptanceDevice": "false",
+
+  /// Shows the cookie consent banner. Only needed once non-essential cookies exist.
+  "cookies.nonEssentialEnabled": "false",
 
   // Notifications
   "notifications.adminEmail": "studio@carisca.org",
@@ -108,6 +145,10 @@ export interface BookingPolicy {
   currency: string;
   freeCancellationHours: number;
   lateRefundPercent: number;
+  /// 0 means the middle tier is off.
+  partialRefundHours: number;
+  partialRefundPercent: number;
+  noShowRefundPercent: number;
 }
 
 export function toBookingPolicy(settings: StudioSettings): BookingPolicy {
@@ -124,6 +165,19 @@ export function toBookingPolicy(settings: StudioSettings): BookingPolicy {
     currency: settings["pricing.currency"] || "GHS",
     freeCancellationHours: Math.max(0, settingInt(settings, "cancellation.freeCancellationHours", 24)),
     lateRefundPercent: Math.min(100, Math.max(0, settingInt(settings, "cancellation.lateRefundPercent", 0))),
+    partialRefundHours: Math.max(0, settingInt(settings, "cancellation.partialRefundHours", 0)),
+    partialRefundPercent: Math.min(100, Math.max(0, settingInt(settings, "cancellation.partialRefundPercent", 0))),
+    noShowRefundPercent: Math.min(
+      100,
+      Math.max(
+        0,
+        settingInt(
+          settings,
+          "cancellation.noShowRefundPercent",
+          settingInt(settings, "cancellation.lateRefundPercent", 0),
+        ),
+      ),
+    ),
   };
 }
 

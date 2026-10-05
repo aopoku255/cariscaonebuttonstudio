@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { appUrl } from "@/lib/env";
+import { POLICY_CATALOGUE, policyPath } from "@/lib/policies/catalogue";
 
 /**
  * Sitemap. Only public, indexable pages are listed: booking pages, receipts, the
@@ -20,8 +21,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/corporate", priority: 0.7, changeFrequency: "monthly" },
     { path: "/faq", priority: 0.7, changeFrequency: "monthly" },
     { path: "/contact", priority: 0.6, changeFrequency: "monthly" },
-    { path: "/terms", priority: 0.3, changeFrequency: "monthly" },
-    { path: "/privacy", priority: 0.3, changeFrequency: "monthly" },
+    ...POLICY_CATALOGUE.map((policy) => ({
+      path: policyPath(policy.slug),
+      priority: 0.3,
+      changeFrequency: "monthly" as const,
+    })),
   ];
 
   return routes.map((route) => ({

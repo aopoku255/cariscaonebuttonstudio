@@ -40,7 +40,7 @@ export function StudioIntro({
   parentOrg: string;
 }) {
   return (
-    <Section tone="surface">
+    <Section tone="surface" id="about">
       <Container>
         <Reveal className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
           <div>

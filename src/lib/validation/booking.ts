@@ -37,6 +37,21 @@ export const customerDetailsSchema = z.object({
   studentIdRef: optionalText(60),
 });
 
+/**
+ * Each policy is its own explicit tick. Only `true` passes: a missing or unticked box
+ * is rejected here, on the server, whatever the page allowed.
+ */
+export const policyAcceptanceSchema = z.object(
+  {
+    terms: z.literal(true, "Please agree to the Terms and Conditions."),
+    studioPolicy: z.literal(true, "Please acknowledge the Studio Policy."),
+    privacy: z.literal(true, "Please confirm you have read the Privacy Policy."),
+    /** Required by the booking service only when the package asks for it. */
+    recordingConsent: z.boolean().default(false),
+  },
+  "Please accept the studio policies to continue.",
+);
+
 export const createBookingSchema = z.object({
   packageId: idSchema,
   dateKey: dateKeySchema,
@@ -46,6 +61,7 @@ export const createBookingSchema = z.object({
   purpose: optionalText(500),
   specialRequirements: optionalText(1000),
   useMembership: z.boolean().default(false),
+  acceptance: policyAcceptanceSchema,
 });
 
 export type CreateBookingPayload = z.infer<typeof createBookingSchema>;

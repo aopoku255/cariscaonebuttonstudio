@@ -30,7 +30,8 @@ export type FieldType =
   | "number"
   | "select"
   | "checkbox"
-  | "url";
+  | "url"
+  | "date";
 
 export interface FieldDef {
   key: string;
@@ -434,7 +435,7 @@ function FormField({
             inputMode={
               field.type === "money" || field.type === "number" ? "decimal" : undefined
             }
-            type={field.type === "url" ? "url" : "text"}
+            type={field.type === "url" ? "url" : field.type === "date" ? "date" : "text"}
           />
         );
       }}

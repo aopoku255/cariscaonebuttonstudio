@@ -27,6 +27,11 @@ export const PERMISSIONS = [
   "settings:manage",
   "admins:manage",
   "audit:read",
+  /// Draft and edit policy versions, and send them for review.
+  "policies:manage",
+  /// Approve, publish, unpublish and archive policy versions.
+  "policies:publish",
+  "incidents:manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -47,6 +52,8 @@ const STUDIO_MANAGER_PERMISSIONS: Permission[] = [
   "discounts:manage",
   "payments:read",
   "analytics:read",
+  "policies:manage",
+  "incidents:manage",
 ];
 
 const FINANCE_PERMISSIONS: Permission[] = [
@@ -62,6 +69,7 @@ const STAFF_PERMISSIONS: Permission[] = [
   "bookings:read",
   "bookings:write",
   "customers:read",
+  "incidents:manage",
 ];
 
 export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {

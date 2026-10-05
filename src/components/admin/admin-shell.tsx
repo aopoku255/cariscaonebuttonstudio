@@ -23,9 +23,11 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PlusSquare,
+  Scale,
   Settings,
   Shield,
   Tag,
+  TriangleAlert,
   Users,
   X,
 } from "lucide-react";
@@ -58,6 +60,8 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   shield: Shield,
   bell: Bell,
   history: History,
+  scale: Scale,
+  "alert-triangle": TriangleAlert,
 };
 
 const COLLAPSE_STORAGE_KEY = "obs-admin-sidebar-collapsed";

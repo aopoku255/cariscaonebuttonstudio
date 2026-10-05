@@ -6,6 +6,7 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcryptjs";
 
 import { PrismaClient } from "../src/generated/prisma/client";
+import { seedPolicies } from "./seed-policies";
 
 /**
  * Seed data for the One Button Studio platform (a production space by CARISCA).
@@ -283,6 +284,7 @@ const STUDENT_MEMBERSHIP_PACKAGES = [
 const ADD_ONS = [
   {
     slug: "camera-operator",
+    studioProduced: true,
     name: "Camera Operator",
     description:
       "A trained operator runs the cameras for your session so you can concentrate on the content.",
@@ -303,6 +305,7 @@ const ADD_ONS = [
   },
   {
     slug: "editing",
+    studioProduced: true,
     name: "Editing",
     description:
       "Post-production editing of your recording. Starting price covers a single standard edit; longer or more complex work is quoted after the session.",
@@ -313,6 +316,7 @@ const ADD_ONS = [
   },
   {
     slug: "full-production",
+    studioProduced: true,
     name: "Full Production",
     description:
       "End-to-end production: planning, filming, editing and delivery. Priced per project, the team will contact you with a quote.",
@@ -731,6 +735,7 @@ async function main() {
   await seedFaqs();
   await seedOperatingHours();
   await seedDiscountRule();
+  await seedPolicies(prisma);
   await seedAdminUser();
   console.log("\nDone.");
 }

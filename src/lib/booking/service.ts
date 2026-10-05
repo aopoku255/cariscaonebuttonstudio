@@ -18,6 +18,7 @@ import {
 import { generateBookingReference } from "@/lib/booking/reference";
 import { resolveStudentVerification } from "@/lib/booking/student-verification";
 import { parseDateKey, slotMinutesFor, toUtcInstant } from "@/lib/booking/time";
+import { getCheckoutPolicies } from "@/lib/policies/queries";
 import { getBookingPolicy, getStudentPolicy } from "@/lib/settings";
 
 /** A rejected booking attempt the caller should surface to the user verbatim. */
@@ -49,6 +50,13 @@ export interface CustomerDetailsInput {
   studentIdRef?: string | null;
 }
 
+export interface PolicyAcceptanceInput {
+  recordingConsent?: boolean;
+  /** Only passed when the studio has switched on recording of device details. */
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
 export interface CreateBookingInput {
   packageId: string;
   dateKey: string;
@@ -59,6 +67,12 @@ export interface CreateBookingInput {
   specialRequirements?: string | null;
   /** Redeem prepaid membership hours if the customer has an active membership. */
   useMembership?: boolean;
+  /**
+   * The customer's agreement to the studio policies, given at online checkout. The
+   * versions they agreed to are looked up here, on the server, never taken from the
+   * request.
+   */
+  acceptance?: PolicyAcceptanceInput;
 
   // Admin-only overrides
   source?: BookingSource;
@@ -255,6 +269,15 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
     );
   }
 
+  // --- Policy acceptance ----------------------------------------------------------
+  if (input.acceptance && pkg.requiresRecordingConsent && !input.acceptance.recordingConsent) {
+    throw new BookingError(
+      "Please confirm that you have permission from the people appearing in your recording.",
+      "INVALID_INPUT",
+    );
+  }
+  const checkoutPolicies = input.acceptance ? await getCheckoutPolicies() : null;
+
   // --- Customer -----------------------------------------------------------------
   const email = input.customer.email.trim().toLowerCase();
   const existingCustomer = await prisma.customer.findUnique({ where: { email } });
@@ -446,6 +469,34 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           },
         },
       });
+
+      if (input.acceptance && checkoutPolicies) {
+        await tx.bookingPolicyAcceptance.create({
+          data: {
+            bookingId: created.id,
+            customerId: customer.id,
+            termsVersionId: checkoutPolicies.terms?.versionId ?? null,
+            termsVersion: checkoutPolicies.terms?.version ?? null,
+            privacyVersionId: checkoutPolicies.privacy?.versionId ?? null,
+            privacyVersion: checkoutPolicies.privacy?.version ?? null,
+            studioPolicyVersionId: checkoutPolicies.studio?.versionId ?? null,
+            studioPolicyVersion: checkoutPolicies.studio?.version ?? null,
+            recordingConsent: pkg.requiresRecordingConsent
+              ? Boolean(input.acceptance.recordingConsent)
+              : null,
+            acceptedAt: now,
+            ipAddress: input.acceptance.ipAddress?.slice(0, 64) ?? null,
+            userAgent: input.acceptance.userAgent?.slice(0, 500) ?? null,
+            termsSnapshot: {
+              freeCancellationHours: policy.freeCancellationHours,
+              lateRefundPercent: policy.lateRefundPercent,
+              partialRefundHours: policy.partialRefundHours,
+              partialRefundPercent: policy.partialRefundPercent,
+              noShowRefundPercent: policy.noShowRefundPercent,
+            },
+          },
+        });
+      }
 
       // The unique index on (bookingDate, slotMinute) is what actually prevents
       // double booking. If another request won the race, this throws P2002.

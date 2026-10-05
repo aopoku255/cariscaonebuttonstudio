@@ -1,14 +1,21 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Check, Clock, Lock, Minus, Plus } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AvailabilityCalendar } from "@/components/booking/calendar";
 import { SummaryPanel, type QuoteView } from "@/components/booking/summary-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, EmptyState, Skeleton } from "@/components/ui/feedback";
-import { Field, Input, Textarea } from "@/components/ui/field";
+import { Checkbox, Field, Input, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { CustomerType } from "@/generated/prisma/enums";
 import type { DayAvailability } from "@/lib/booking/availability";
@@ -31,7 +38,18 @@ export interface FlowPackage {
   category: string;
   isPopular: boolean;
   studentOnly: boolean;
+  /** Checkout asks the customer to confirm they hold permission from participants. */
+  requiresRecordingConsent: boolean;
+  /** The studio expects a completed participant release form for this package. */
+  requiresParticipantRelease: boolean;
   features: { id: string; label: string }[];
+}
+
+export interface PolicyAcceptanceState {
+  terms: boolean;
+  studioPolicy: boolean;
+  privacy: boolean;
+  recordingConsent: boolean;
 }
 
 export interface FlowAddOn {
@@ -117,6 +135,12 @@ export function BookingFlow({
   });
   const [purpose, setPurpose] = useState("");
   const [specialRequirements, setSpecialRequirements] = useState("");
+  const [acceptance, setAcceptance] = useState<PolicyAcceptanceState>({
+    terms: false,
+    studioPolicy: false,
+    privacy: false,
+    recordingConsent: false,
+  });
 
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -228,9 +252,20 @@ export function BookingFlow({
     return STEPS.length - 1;
   }, [categoryChosen, packageId, dateKey, effectiveStartMinute, customer]);
 
+  const needsRecordingConsent = Boolean(selectedPackage?.requiresRecordingConsent);
+  const policiesAccepted =
+    acceptance.terms &&
+    acceptance.studioPolicy &&
+    acceptance.privacy &&
+    (!needsRecordingConsent || acceptance.recordingConsent);
+
   /* --- Submit ------------------------------------------------------------- */
   async function handleSubmit() {
     if (!packageId || !dateKey || effectiveStartMinute === null) return;
+    if (!policiesAccepted) {
+      setFormError("Please tick each of the boxes above to continue.");
+      return;
+    }
 
     setSubmitting(true);
     setErrors({});
@@ -252,6 +287,12 @@ export function BookingFlow({
       purpose: purpose || undefined,
       specialRequirements: specialRequirements || undefined,
       useMembership: false,
+      acceptance: {
+        terms: acceptance.terms,
+        studioPolicy: acceptance.studioPolicy,
+        privacy: acceptance.privacy,
+        recordingConsent: needsRecordingConsent && acceptance.recordingConsent,
+      },
     });
 
     if (!result.ok) {
@@ -389,6 +430,10 @@ export function BookingFlow({
               specialRequirements={specialRequirements}
               paymentEnabled={paymentEnabled}
               onEdit={goTo}
+              acceptance={acceptance}
+              onAcceptanceChange={setAcceptance}
+              needsRecordingConsent={needsRecordingConsent}
+              needsParticipantRelease={Boolean(selectedPackage?.requiresParticipantRelease)}
             />
           ) : null}
         </div>
@@ -410,7 +455,12 @@ export function BookingFlow({
           </Button>
 
           {step.key === "pay" ? (
-            <Button onClick={handleSubmit} loading={submitting} size="lg">
+            <Button
+              onClick={handleSubmit}
+              loading={submitting}
+              size="lg"
+              disabled={!policiesAccepted}
+            >
               {!paymentEnabled
                 ? "Confirm booking"
                 : quote && quote.totalMinor > 0
@@ -1104,6 +1154,20 @@ function StepDetails({
   );
 }
 
+/** Policy links open in a new tab so a half-finished booking is never lost. */
+function PolicyLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="font-semibold text-brand-700 underline underline-offset-4"
+    >
+      {children}
+    </a>
+  );
+}
+
 function StepReview({
   quote,
   dateKey,
@@ -1113,6 +1177,10 @@ function StepReview({
   specialRequirements,
   paymentEnabled,
   onEdit,
+  acceptance,
+  onAcceptanceChange,
+  needsRecordingConsent,
+  needsParticipantRelease,
 }: {
   quote: QuoteView | null;
   dateKey: string | null;
@@ -1122,7 +1190,14 @@ function StepReview({
   specialRequirements: string;
   paymentEnabled: boolean;
   onEdit: (index: number) => void;
+  acceptance: PolicyAcceptanceState;
+  onAcceptanceChange: (next: PolicyAcceptanceState) => void;
+  needsRecordingConsent: boolean;
+  needsParticipantRelease: boolean;
 }) {
+  const set = (key: keyof PolicyAcceptanceState) => (event: ChangeEvent<HTMLInputElement>) =>
+    onAcceptanceChange({ ...acceptance, [key]: event.target.checked });
+
   const duration = quote?.durationMinutes ?? 0;
 
   const rows: { label: string; value: string; step: number }[] = [
@@ -1223,6 +1298,70 @@ function StepReview({
           payment.
         </Alert>
       )}
+
+      <fieldset className="mt-6 rounded-xl border border-line bg-surface p-5">
+        <legend className="px-1.5 text-[13px] font-semibold text-ink">Before you continue</legend>
+        <div className="space-y-3.5">
+          <Checkbox
+            checked={acceptance.terms}
+            onChange={set("terms")}
+            required
+            label={
+              <>
+                I have read and agree to the One Button Studio{" "}
+                <PolicyLink href="/terms-and-conditions">Terms and Conditions</PolicyLink>.
+              </>
+            }
+          />
+          <Checkbox
+            checked={acceptance.studioPolicy}
+            onChange={set("studioPolicy")}
+            required
+            label={
+              <>
+                I acknowledge the <PolicyLink href="/studio-policy">Studio Policy</PolicyLink>.
+              </>
+            }
+          />
+          <Checkbox
+            checked={acceptance.privacy}
+            onChange={set("privacy")}
+            required
+            label={
+              <>
+                I have read the <PolicyLink href="/privacy-policy">Privacy Policy</PolicyLink>.
+              </>
+            }
+          />
+          {needsRecordingConsent ? (
+            <Checkbox
+              checked={acceptance.recordingConsent}
+              onChange={set("recordingConsent")}
+              required
+              label="I confirm that I have obtained the necessary permissions from people appearing in the recording."
+              description={
+                <>
+                  See the <PolicyLink href="/content-policy">Content and Recording Policy</PolicyLink>.
+                </>
+              }
+            />
+          ) : null}
+        </div>
+
+        {needsParticipantRelease ? (
+          <p className="mt-4 border-t border-line pt-3.5 text-[13px] leading-relaxed text-ink-soft">
+            This package needs a completed{" "}
+            <PolicyLink href="/participant-release">participant release form</PolicyLink> for each
+            person appearing in the recording. Please bring the signed forms to your session.
+          </p>
+        ) : null}
+
+        <p className="mt-4 text-[12.5px] leading-relaxed text-muted">
+          Cancellations and refunds are covered by the{" "}
+          <PolicyLink href="/booking-policy">Booking and Cancellation Policy</PolicyLink> and the{" "}
+          <PolicyLink href="/refund-policy">Refund Policy</PolicyLink>.
+        </p>
+      </fieldset>
     </div>
   );
 }

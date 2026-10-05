@@ -136,6 +136,35 @@ enum NotificationStatus {
   FAILED
 }
 
+/// Lifecycle of one version of a policy document. Only one version of a policy is
+/// PUBLISHED at a time; publishing a new one archives the previous.
+enum PolicyStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum IncidentCategory {
+  WEAR_AND_TEAR
+  ACCIDENTAL
+  NEGLIGENT
+  INTENTIONAL
+}
+
+enum IncidentStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+}
+
+enum ReleaseStatus {
+  PENDING
+  SIGNED
+  WITHDRAWN
+}
+
 // ---------------------------------------------------------------------------
 // Identity
 // ---------------------------------------------------------------------------
@@ -253,6 +282,12 @@ model Package {
   validityDays             Int?
   priorityBooking          Boolean @default(false)
 
+  /// Checkout asks the customer to confirm they hold permission from everyone who
+  /// will appear in the recording.
+  requiresRecordingConsent  Boolean @default(false)
+  /// Staff expect a completed participant release form for sessions on this package.
+  requiresParticipantRelease Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -287,6 +322,9 @@ model AddOn {
   isActive    Boolean          @default(true)
   sortOrder   Int              @default(0)
   maxQuantity Int              @default(1)
+  /// The studio itself takes part in producing the content (operator, editing, full
+  /// production), so a booking with this add-on needs participant releases on file.
+  studioProduced Boolean       @default(false)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -311,6 +349,8 @@ model Equipment {
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  incidents EquipmentIncident[]
 
   @@index([isActive, sortOrder])
 }
@@ -439,6 +479,9 @@ model Booking {
   slots           BookingSlot[]
   membershipUsage MembershipUsage[]
   notifications   Notification[]
+  policyAcceptance BookingPolicyAcceptance?
+  incidents        EquipmentIncident[]
+  releases         ContentRelease[]
 
   @@index([bookingDate, status])
   @@index([customerId])
@@ -676,4 +719,146 @@ model AuditLog {
   @@index([adminUserId])
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Policies
+// ---------------------------------------------------------------------------
+
+/// A policy document shown on the public site (Privacy Policy, Terms and so on). The
+/// text itself lives in PolicyVersion rows so every published wording is kept.
+model Policy {
+  id                 String   @id @default(cuid())
+  /// Also the public URL path, for example "privacy-policy".
+  slug               String   @unique
+  title              String
+  summary            String?  @db.Text
+  sortOrder          Int      @default(0)
+  /// Customers must accept or acknowledge this policy at checkout, so it can be
+  /// replaced by a newer published version but never left without one.
+  requiredAtCheckout Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  versions PolicyVersion[]
+
+  @@index([sortOrder])
+}
+
+model PolicyVersion {
+  id       String       @id @default(cuid())
+  policyId String
+  /// Human version label, for example "1.0".
+  version  String
+  title    String
+  /// Restricted Markdown, rendered by src/lib/policies/render.tsx.
+  content  String       @db.LongText
+  status   PolicyStatus @default(DRAFT)
+
+  /// Both dates are set by an administrator; nothing fills them in automatically, so
+  /// a date never implies an approval that has not happened.
+  effectiveDate   DateTime? @db.Date
+  lastUpdatedDate DateTime? @db.Date
+  changeReason    String?   @db.Text
+  previousVersionId String?
+
+  /// Admin ids plus a name snapshot, so the history stays readable after an admin
+  /// account is removed.
+  createdByAdminId   String?
+  createdByName      String?
+  approvedByAdminId  String?
+  approvedByName     String?
+  approvedAt         DateTime?
+  publishedByAdminId String?
+  publishedByName    String?
+  publishedAt        DateTime?
+  archivedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, version])
+  @@index([policyId, status])
+}
+
+/// What a customer agreed to when they placed a booking online. Version labels are
+/// copied in so the record stands on its own.
+model BookingPolicyAcceptance {
+  id         String @id @default(cuid())
+  bookingId  String @unique
+  customerId String
+
+  termsVersionId        String?
+  termsVersion          String?
+  privacyVersionId      String?
+  privacyVersion        String?
+  studioPolicyVersionId String?
+  studioPolicyVersion   String?
+
+  /// Null when the package did not ask for it.
+  recordingConsent Boolean?
+
+  acceptedAt DateTime @default(now())
+  /// Only stored when the "record device details" setting is switched on.
+  ipAddress  String?
+  userAgent  String?  @db.Text
+  /// Cancellation settings in force at acceptance.
+  termsSnapshot Json?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model EquipmentIncident {
+  id          String           @id @default(cuid())
+  equipmentId String?
+  bookingId   String?
+  /// Free-text item name, for things that are not in the equipment list.
+  itemName    String?
+  category    IncidentCategory
+  status      IncidentStatus   @default(OPEN)
+  description String           @db.Text
+  occurredOn  DateTime         @db.Date
+  /// Estimated or agreed cost in pesewas, when known.
+  costMinor       Int?
+  resolutionNotes String?      @db.Text
+  reportedByAdminId String?
+  reportedByName    String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  equipment Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  booking   Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([equipmentId])
+  @@index([bookingId])
+  @@index([occurredOn])
+}
+
+/// A participant's consent to appear in content the studio helps to produce. This is
+/// a record that staff hold a signed form, not an electronic signature.
+model ContentRelease {
+  id                 String        @id @default(cuid())
+  bookingId          String
+  participantName    String
+  participantContact String?
+  isMinor            Boolean       @default(false)
+  guardianName       String?
+  scopeOfUse         String?       @db.Text
+  status             ReleaseStatus @default(PENDING)
+  signedOn           DateTime?     @db.Date
+  notes              String?       @db.Text
+  recordedByAdminId  String?
+  recordedByName     String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([status])
 }

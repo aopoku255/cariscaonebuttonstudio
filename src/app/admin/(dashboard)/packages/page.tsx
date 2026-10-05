@@ -44,6 +44,8 @@ export default async function AdminPackagesPage() {
           isActive: pkg.isActive,
           isPopular: pkg.isPopular,
           studentOnly: pkg.studentOnly,
+          requiresRecordingConsent: pkg.requiresRecordingConsent,
+          requiresParticipantRelease: pkg.requiresParticipantRelease,
           sortOrder: pkg.sortOrder,
           includedHours: pkg.includedHours,
           extraHourDiscountPercent: pkg.extraHourDiscountPercent,

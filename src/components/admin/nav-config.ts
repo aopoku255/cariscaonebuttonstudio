@@ -124,6 +124,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "credit-card",
         permission: "payments:read",
       },
+      {
+        href: "/admin/incidents",
+        label: "Equipment incidents",
+        icon: "alert-triangle",
+        permission: "incidents:manage",
+      },
     ],
   },
   {
@@ -135,6 +141,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "settings",
         permission: "settings:manage",
       },
+      { href: "/admin/policies", label: "Policies", icon: "scale", permission: "policies:manage" },
       { href: "/admin/team", label: "Admin users", icon: "shield", permission: "admins:manage" },
       {
         href: "/admin/notifications",
